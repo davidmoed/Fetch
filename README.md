@@ -4,6 +4,8 @@ Fetch is a simple CLI web scraper that captures images from almost any website. 
 
 To use it, download the repository, and install Node and NPM on your CLI. First run npm install in the local directory. After simply type $fetch [website url] [folder to output] and optionally [number of pictures to download] [-bg].
 
+Some website will not allow you to scrape their images without proper permissions. This tool doesn't handle those yet.
+
 Sample usage:
 
 ### full usage
