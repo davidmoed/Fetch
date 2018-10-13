@@ -1,0 +1,24 @@
+{
+  "name": "intango",
+  "version": "1.0.0",
+  "description": "A simple web scraper that downloads a page's images and creates an html file with them.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "David Moed",
+  "license": "ISC",
+  "bin": {
+    "fetch": "./cli.js"
+  },
+  "dependencies": {
+    "chalk": "^2.4.1",
+    "cheerio": "^1.0.0-rc.2",
+    "fs": "0.0.1-security",
+    "image-downloader": "^3.4.1",
+    "mkdirp": "^0.5.1",
+    "request": "^2.88.0",
+    "request-promise": "^4.2.2"
+  }
+}
