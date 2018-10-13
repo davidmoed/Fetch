@@ -21,7 +21,13 @@ const site = args[0];
 
 //set the output folder based on the current directory
 //create a new folder if the folder name specified doesn't exist
-const outFolder = __dirname + args[1];
+
+let outFolderName = args[1];
+//check for a leading slash on the input
+if (outFolderName[0] !== '/')
+   outFolderName = '/' + outFolderName;
+
+const outFolder = __dirname + outFolderName;
 mkdirp(outFolder, function (err) {
    if (err) return err;
 });
@@ -29,8 +35,8 @@ mkdirp(outFolder, function (err) {
 
 
 //check for correct input
-if (args.length < 2 || args.length > 3) {
-   console.log(errorOut('There can only be 2 inputs: get-pics [website] [output folder]'));
+if (args.length < 2 || args.length > 4) {
+   console.log(errorOut('There can only be 4 inputs: fetch [website] [output folder] [number of photos to scrape] [-bg (scrape background images as well)]'));
 } else {
 
    const imageUrlArr = [];
@@ -41,6 +47,7 @@ if (args.length < 2 || args.length > 3) {
    if (args[2] != undefined) {
       imageLimit = args[2];
    }
+   let imageCounter = 0;
 
 //get data from html page and pull all images
    //set options for request to get url and html
@@ -56,15 +63,71 @@ if (args.length < 2 || args.length > 3) {
       .then(($) => {
          console.log(successOut('scraping ' + highlightOut(site) + ' and putting the new file in ' + highlightOut(outFolder)));
 
+         //set a variable for the total number of non-background images
+         let regImages = 0;
+
          //capture image urls in an array
-         $('img').each(function (i) {
+         $('img').each(function() {
 
             let imgUrl = $(this).attr('src');
 
-            imageUrlArr.push(imgUrl);
+            //check for duplicate images and do not count duplicates in the total count
+            if (imageUrlArr.indexOf(imgUrl) === -1) {
+               imageUrlArr.push(imgUrl);
+            } else {
+               imageCounter--;
+            }
+
+            //increment the overall image counter to ensure the total number of images
+            //is cumulative with the bg images
+            imageCounter++;
+
+            //console.log('imageLimit: ' + imageLimit + ' imageCounter: ' + imageCounter);
+
+            return imageCounter < imageLimit;
+         });
 
 
-            // Download to a directory and save with the original filename
+
+
+         if( args[3] === '-bg') {
+            //output number of regular images
+            regImages = imageUrlArr.length;
+            console.log('Total <img> images captured: ' + regImages);
+
+            $('figure').each(function() {
+
+               //capture image url style and remove the surrounding css url - (url(... image url here ...))
+               let imgUrl = $(this).css('background-image');
+
+               if (imgUrl !== undefined && imgUrl !== null) {
+                  imgUrl = imgUrl.replace(/^url\(['"]?/,'').replace(/['"]?\)$/,'');
+
+                  //check for duplicate images and do not count duplicates in the total count
+                  if (imageUrlArr.indexOf(imgUrl) === -1) {
+                     imageUrlArr.push(imgUrl);
+                  } else {
+                     imageCounter--;
+                  }
+                  //console.log(imgUrl);
+               }
+
+               //increment the overall image counter to ensure the total number of images
+               //is cumulative with the bg images
+               imageCounter++;
+
+               //console.log('imageLimit: ' + imageLimit + ' imageCounter: ' + imageCounter);
+
+               return imageCounter < imageLimit;
+            });
+
+            //output number of background images
+            console.log('Total background images captured: ' + (imageUrlArr.length - regImages));
+         }
+
+         // Download to a directory and save with the original filename
+         imageUrlArr.forEach(function( imgUrl ) {
+            console.log(imgUrl);
             const options = {
               url: imgUrl,
               dest: outFolder,
@@ -77,8 +140,8 @@ if (args.length < 2 || args.length > 3) {
             }
             downloader(options);
 
-            return i < imageLimit - 1;
-         });
+
+         })
 
          console.log(successOut('you successfully scraped ' + highlightOut(imageUrlArr.length) + ' images from ' + site));
 
