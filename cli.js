@@ -30,11 +30,15 @@ mkdirp(outFolder, function(err) {
     if (err) return err;
 });
 
-//check for correct input
+//check for correctly formatted input
 if (args.length < 2 || args.length > 4) {
     console.log(errorOut('There can only be 4 inputs: fetch [website] [output folder] [number of photos to scrape] [-bg (scrape background images as well)]'));
+} else if (isNaN(args[2]) && args[2] !== '-bg') {
+    console.log(errorOut('Please enter a number to limit the amount of images scraped or the -bg tag for the 3rd argument.'));
+} else if (args[3] !== '-bg' && args[3] !== undefined) {
+   console.log(errorOut('Only -bg can be entered as the 4th argument. Please try again.'));
 } else {
-
+    //if all input is correctly formatted
     const imageUrlArr = [];
 
     //I know you didn't ask for this, but for debug it's very helpful to be able to set a limit on the number of images grabbed
@@ -75,11 +79,11 @@ if (args.length < 2 || args.length > 4) {
                    //ensure that the image is not locally stored, and if it is add the site's url before it
                    let checkProtocol = imgUrl.slice(0,4);
 
-                   if(checkProtocol !== "http") {
+                   if (checkProtocol !== "http") {
                       //check for a trailing slash for the url and add it if it is not there
                       //this ensures there is a proper path for local files
                       let urlTrailing = siteUrl.slice(-1);
-                      if(urlTrailing !== '/') {
+                      if (urlTrailing !== '/') {
                         imgUrl = imgUrl = siteUrl + '/' + imgUrl;;
                       } else {
                         imgUrl = siteUrl + imgUrl;
@@ -177,7 +181,7 @@ if (args.length < 2 || args.length > 4) {
 
             const fullHtml = htmlHead + htmlBody;
             //create the file with the html in the output folder
-            const fileName = outFolder + '/fetchImages.html';
+            const fileName = outFolder + '/_fetchImages.html';
             const stream = fs.createWriteStream(fileName);
 
             stream.on('error', function(e) {
@@ -185,7 +189,7 @@ if (args.length < 2 || args.length > 4) {
             });
             stream.write(fullHtml);
             stream.end();
-            console.log(successOut('You can access the images\' urls in fetchImages.html'));
+            console.log(successOut('You can access the images\' urls in _fetchImages.html'));
 
         })
         .catch((err) => {
