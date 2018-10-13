@@ -1,4 +1,4 @@
-#Fetch
+# Fetch
 
 Fetch is a simple CLI web scraper that captures images from almost any website. The scraper downloads the images into a specified folder, and creates an HTML file with all the scraped images, and their urls. The program uses es6 vanilla Javascript and Node.js.
 
