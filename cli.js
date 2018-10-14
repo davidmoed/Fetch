@@ -33,7 +33,7 @@ mkdirp(outFolder, function(err) {
 //check for correctly formatted input
 if (args.length < 2 || args.length > 4) {
     console.log(errorOut('There can only be 4 inputs: fetch [website] [output folder] [number of photos to scrape] [-bg (scrape background images as well)]'));
-} else if (isNaN(args[2]) && args[2] !== '-bg') {
+} else if (isNaN(args[2]) && args[2] !== '-bg' && args[2] !== undefined) {
     console.log(errorOut('Please enter a number to limit the amount of images scraped or the -bg tag for the 3rd argument.'));
 } else if (args[3] !== '-bg' && args[3] !== undefined) {
    console.log(errorOut('Only -bg can be entered as the 4th argument. Please try again.'));
@@ -65,10 +65,7 @@ if (args.length < 2 || args.length > 4) {
         .then(($) => {
             console.log(successOut('Scraping ' + highlightOut(siteUrl) + ' and putting the new file in ' + highlightOut(outFolder)));
 
-            //set a variable for the total number of non-background images
-            let regImages = 0;
-
-            //capture image urls in an array
+            //capture image urls from each img tag in an array
             $('img').each(function() {
 
                 let imgUrl = $(this).attr('src');
@@ -76,22 +73,40 @@ if (args.length < 2 || args.length > 4) {
                 //check for duplicate or undefined images and do not include them in the total count
                 if (imageUrlArr.indexOf(imgUrl) === -1 && imgUrl !== undefined) {
 
-                   //ensure that the image is not locally stored, and if it is add the site's url before it
+                   //ensure that the image src does not have a relative path,
+                   //if it does add the site's url before it to make it absolute
                    let checkProtocol = imgUrl.slice(0,4);
-
                    if (checkProtocol !== "http") {
-                      //check for a trailing slash for the url and add it if it is not there
-                      //this ensures there is a proper path for local files
-                      let urlTrailing = siteUrl.slice(-1);
-                      if (urlTrailing !== '/') {
-                        imgUrl = imgUrl = siteUrl + '/' + imgUrl;;
-                      } else {
-                        imgUrl = siteUrl + imgUrl;
-                      }
+
+                      //check that the images' paths are all pointing to the base url,
+                      //not a page of the website (ex: google.com, not google.com/images)
+                      let endOfBaseUrl = siteUrl.indexOf('.com') + 4;
+                      let tmpSiteUrl = '';
+
+                      //remove anything trailing the base url and use the base url for the absolute path
+                      if (endOfBaseUrl !== undefined) {
+                        tmpSiteUrl = siteUrl.slice(0, endOfBaseUrl);
+                     } else {
+                        tmpSiteUrl = siteUrl;
+                     }
+
+                     //check for a trailing slash for the url or leading slash for the image outFolder
+                     //add it if it is not there
+                     //this ensures that there is a properly formatted absolute path
+                     let urlTrailing = siteUrl.slice(-1);
+                     let imgLeading = imgUrl.slice(0,1);
+
+                     if (urlTrailing !== '/' && imgLeading !== '/') {
+                       imgUrl = tmpSiteUrl + '/' + imgUrl;;
+                     } else {
+                       imgUrl = tmpSiteUrl + imgUrl;
+                     }
+
                     }
 
                     imageUrlArr.push(imgUrl);
                 } else {
+                    //if the image is not added to the array, do not count it in the overall counter
                     imageCounter--;
                 }
 
@@ -104,21 +119,23 @@ if (args.length < 2 || args.length > 4) {
                 return imageCounter < imageLimit;
             });
 
+            //if background images are being searched as well
             if (args[3] === '-bg' || args[2] === '-bg') {
-                //output number of regular images
-                regImages = imageUrlArr.length;
+                //print number of regular images
+                const regImages = imageUrlArr.length;
                 console.log(successOut('Total inline images captured: ' + highlightOut(regImages)));
 
                 $('figure').each(function() {
 
-                    //capture image url style and remove the surrounding css url - (url(... image url here ...))
+                    //capture image url style and remove the surrounding css url -
+                    //(url(... image url here ...))
                     let imgUrl = $(this).css('background-image');
 
                     if (imgUrl !== undefined && imgUrl !== null) {
                         imgUrl = imgUrl.replace(/^url\(['"]?/, '').replace(/['"]?\)$/, '');
 
-                        //check for duplicate images and do not count duplicates in the total count
-                        if (imageUrlArr.indexOf(imgUrl) === -1) {
+                        //check for duplicate or undefined images and do not include them in the total count
+                        if (imageUrlArr.indexOf(imgUrl) === -1 && imgUrl !== undefined) {
                             imageUrlArr.push(imgUrl);
                         } else {
                             imageCounter--;
@@ -135,17 +152,17 @@ if (args.length < 2 || args.length > 4) {
                     return imageCounter < imageLimit;
                 });
 
-                //output number of background images
+                //print number of background images
                 console.log(successOut('Total background images captured: ' + highlightOut(imageUrlArr.length - regImages)));
             }
 
             //exit the program if there are no images
             if (imageUrlArr.length === 0) {
-               console.log(errorOut('No images found. Please enter a different site.'));
+               console.log(errorOut('No images found or image format not recognized. Please enter a different site.'));
                process.exit();
             }
 
-            // Download to a directory and save with the original filename
+            //Download the images to a directory and save them with the original filename
             imageUrlArr.forEach(function(imgUrl) {
 
                 //console.log(imgUrl);
@@ -159,16 +176,17 @@ if (args.length < 2 || args.length > 4) {
                         //console.log('File saved to', filename)
                     }
                 }
+                //use the callback version of the image downloader to avoid a nested promise
                 downloader(options);
 
             })
 
-            console.log(successOut('You successfully scraped ' + highlightOut(imageUrlArr.length) + ' images from ' + siteUrl + '/n'));
+            console.log(successOut('You successfully scraped ' + highlightOut(imageUrlArr.length) + ' images from ' + siteUrl));
 
             //create a new html file with the images and links
             const pageStyles = '<style>body{margin: 30px; font-family: "Verdana";background-color: #e6f7ff} h1{text-align:center; color: #0099ff} img{max-width: 120px;}tr{min-height: 150px} table{margin: auto auto;} th{color: #0099ff} td{max-width:350px; padding: 10px;} a{text-decoration:none;color:#ff944d} a:hover{color: #ff751a}</style>'
 
-            const htmlHead = '<!DOCTYPE html><head><title>' + siteUrl + '\'s images</title>' + pageStyles + '</head>'
+            const htmlHead = '<!DOCTYPE html><html><head><title>' + siteUrl + '\'s images</title>' + pageStyles + '</head>'
 
             let htmlBody = '<body><h1>Images from <a href="' + siteUrl + '">' + siteUrl + '</a></h1><table><tr><th>Images</th><th>Links</th></tr>';
 
@@ -177,7 +195,7 @@ if (args.length < 2 || args.length > 4) {
                 htmlBody += '<tr><td><img src="' + imgSrc + '"></td><td><a href="' + imgSrc + '" target="_blank">' + imgSrc + '</a></td></tr>'
             });
 
-            htmlBody += '</table></body>'
+            htmlBody += '</table></body></html>'
 
             const fullHtml = htmlHead + htmlBody;
             //create the file with the html in the output folder
@@ -195,14 +213,14 @@ if (args.length < 2 || args.length > 4) {
         .catch((err) => {
             //check for errors with the scraper
             if (err.error.code == 'ENOTFOUND') {
-                //if the site was not input correctly or does not exist:
+                //if the site url was not input correctly or does not exist:
                 console.log(errorOut('Error accessing ' + siteUrl + ' please check that the input is properly formatted as it appears in the browser. ex. https//:www.google.com'));
             } else if (err.statusCode == 403) {
                 //if the site does not allow access to scrapers
                 console.log(errorOut('Error: Access to this site is forbidden. You shall not scrape.'));
             } else {
-                //if we're here something very bad happened
-                console.log(err); //uncomment this line for full error logs
+                //if we're here something very bad happened (like a base 64 number)
+                console.log(err);
             }
         });
 
